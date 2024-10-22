@@ -9,3 +9,10 @@ android {
         ]
     }
 }
+
+Open android/app/build.gradle and Add below mentioned line after the react.gradle.
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+
+
+react-native start
+=> a

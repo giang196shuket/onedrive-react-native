@@ -1,134 +1,117 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
+/* eslint-disable react/no-unstable-nested-components */
 import React, {useState} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-  Button,
-} from 'react-native';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
-import {authorize, AuthorizeResult} from 'react-native-app-auth';
-import axios from 'axios';
-import ImageViewer from './components/Image';
+import {Provider, useSelector} from 'react-redux';
+import Home from './pages/home';
+import {store} from './redux/store';
+import {NavigationContainer} from '@react-navigation/native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import User from './pages/user';
+import {Image, StyleSheet, Text} from 'react-native';
+import {createStackNavigator} from '@react-navigation/stack';
+import Login from './pages/login';
+import Header from './components/header';
 
-//consumers for all of type Account ( business, personal..)
-const config = {
-  issuer: 'https://login.microsoftonline.com/consumers/v2.0',
-  clientId: 'ffca3086-8c7e-4d24-8368-de56b4cf33f2',
-  redirectUrl: 'onedriver-react-native://react-native-auth/',
-  scopes: ['Files.Read', 'Files.ReadWrite', 'offline_access'],
-  serviceConfiguration: {
-    authorizationEndpoint:
-      'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize',
-    tokenEndpoint:
-      'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
-  },
-};
+const Stack = createStackNavigator();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  const [authState, setAuthState] = useState(null);
-  const [fileList, setFileList] = useState([]);
-
-  // login OneDrive
-  const onLogin = async () => {
-    try {
-      const result = await authorize(config);
-      setAuthState(result);
-      console.log('Login successful', result);
-    } catch (error) {
-      console.error('Login failed', error);
-    }
-  };
-
-  //  API OneDrive , get files
-  const getFiles = async () => {
-    if (authState && authState.accessToken) {
-      try {
-        const response = await axios.get(
-          'https://graph.microsoft.com/v1.0/me/drive/root/children',
-          {
-            headers: {
-              Authorization: `Bearer ${authState.accessToken}`,
-            },
+const Tab = createBottomTabNavigator();
+function MainTabs() {
+  return (
+    <>
+      <Header />
+      <Tab.Navigator
+        screenOptions={({route}) => ({
+          headerShown: false,
+          tabBarStyle: {
+            paddingBottom: 20, // Adjust the value as needed
+            paddingTop: 10,
+            height: 80,
           },
-        );
-        setFileList(response.data.value);
-        console.log('Files fetched:', response.data.value);
-      } catch (error) {
-        console.error('Error fetching files', error);
-      }
-    } else {
-      console.log('No access token available');
-    }
-  };
+          tabBarItemStyle: {
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 0, // Điều chỉnh khoảng cách theo chiều dọc
+          },
+        })}>
+        <Tab.Screen
+          name="Home"
+          component={Home}
+          options={{
+            // eslint-disable-next-line react/no-unstable-nested-components
+            tabBarIcon: ({color, size}) => (
+              <Image
+                style={styles.icon}
+                source={require('./assets/icons/home.png')}
+              />
+            ),
+            tabBarLabel: ({focused}) => (
+              <Text
+                // eslint-disable-next-line react-native/no-inline-styles
+                style={{
+                  color: focused ? 'black' : 'gray',
+                  fontWeight: focused ? 'bold' : 'normal',
+                }}>
+                Home
+              </Text>
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="User"
+          component={User}
+          options={{
+            // eslint-disable-next-line react/no-unstable-nested-components
+            tabBarIcon: ({color, size}) => (
+              <Image
+                style={styles.icon}
+                source={require('./assets/icons/user.png')}
+              />
+            ),
+            tabBarLabel: ({focused}) => (
+              // eslint-disable-next-line react-native/no-inline-styles
+              <Text
+                // eslint-disable-next-line react-native/no-inline-styles
+                style={{
+                  color: focused ? 'black' : 'gray',
+                  fontWeight: focused ? 'bold' : 'normal',
+                }}>
+                User
+              </Text>
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </>
+  );
+}
+function AppNavigator() {
+  const authState = useSelector(state => state.auth);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <View style={styles.sectionContainer}>
-          {!authState && <Button title="Login to OneDrive" onPress={onLogin} />}
-          <Button
-            title="Get OneDrive Files"
-            onPress={getFiles}
-            disabled={!authState}
-          />
-          {fileList.length > 0 && (
-            <View style={styles.sectionImg}>
-              {fileList.map(
-                (file, index) =>
-                  file.file &&
-                  file.file.mimeType.startsWith('image/') && (
-                    <ImageViewer
-                      key={index}
-                      imageUrl={file['@microsoft.graph.downloadUrl']}
-                      name={file.name}
-                    />
-                  ),
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <Stack.Navigator screenOptions={{headerShown: false}}>
+      {!authState.isLoggedIn ? (
+        <Stack.Screen name="Login" component={Login} />
+      ) : (
+        <Stack.Screen name="MainApp" component={MainTabs} />
+      )}
+    </Stack.Navigator>
+  );
+}
+function RootApp() {
+  return (
+    <Provider store={store}>
+      <NavigationContainer>
+        <AppNavigator />
+      </NavigationContainer>
+    </Provider>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionImg: {
-    marginTop: 30,
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 25,
+  icon: {
+    width: 20,
+    height: 20,
   },
 });
 
-export default App;
+export default RootApp;
